@@ -23,5 +23,5 @@ Configuring BeamGrid is tedious, but once you've set it up, you can control the 
 It should be possible to port this to other voice coding systems such as Caster on Windows or Talon on Mac, but they haven't been ported so far.
 
 Video demo of BeamGrid:
-[![Video demo](https://img.youtube.com/vi/xbdwNQfrlKI/0.jpg "Video demo" (https://youtu.be/xbdwNQfrlKI)
+[![Video demo](https://img.youtube.com/vi/xbdwNQfrlKI/0.jpg "Video demo")](https://youtu.be/xbdwNQfrlKI)
 
