@@ -1,0 +1,8 @@
+[Core]
+Name = ClickMouseGrid plugin
+Module = clickMouseGrid
+
+[Documentation]
+Author = Shervin Emami
+Version = 0.1
+Description = Plugin that clicks the mouse
