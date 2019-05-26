@@ -22,6 +22,8 @@ It's based on the "DouglasGrid" and "Rainbow" mouse grid modes of Caster on Wind
 Configuring BeamGrid is tedious, but once you've set it up, you can control the mouse in Linux by voice using Aenea + Dragonfly + Dragon Naturally Speaking.
 It should be possible to port this to other voice coding systems such as Caster on Windows or Talon on Mac, but they haven't been ported so far.
 
+
 Video demo of BeamGrid:
+
 [![Video demo](https://img.youtube.com/vi/xbdwNQfrlKI/0.jpg "Video demo")](https://youtu.be/xbdwNQfrlKI)
 
