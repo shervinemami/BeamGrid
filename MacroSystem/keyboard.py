@@ -41,6 +41,7 @@ from aenea import (
 )
 
 from lettermap import letterMap
+import copy
 
 from dragonfly.actions.keyboard import keyboard
 from dragonfly.actions.typeables import typeables
@@ -178,7 +179,10 @@ for letter in letterMap:
     #upperLetterMap["case " + letter] = letterMap[letter].upper()         # My "case" is too much like "plus"
     #upperLetterMap["capital " + letter] = letterMap[letter].upper()     # My "cap" is too much like "up"
     #upperLetterMap["sky " + letter] = letterMap[letter].upper()         # My "sky" is too much like "score" :-(
-letterMap.update(upperLetterMap)
+
+# Generate a dictionary containing both the lowercase and uppercase alphabet
+letterMapBothCases = copy.deepcopy(letterMap)
+letterMapBothCases.update(upperLetterMap)
 
 
 def handle_word(text):
@@ -205,6 +209,10 @@ grammarCfg.cmd.map = Item(
         "page down [<n> times]": Key("pgdown:%(n)d"),
         "jump [<n> times]": Key("pgup:%(n)d"),
         "drop [<n> times]": Key("pgdown:%(n)d"),
+        "jump half": Key("up:30/10"),       # Half of a page up/down. When I say "jump half" quickly, Dragon hears it as a single word, so we also support that.
+        "jumpuff": Key("up:30/10"),
+        "drop half": Key("down:30/10"),
+        "drohpuff": Key("down:30/10"),
         #"up <n> (page|pages)": Key("pgup:%(n)d"),
         #"down <n> (page|pages)": Key("pgdown:%(n)d"),
         #"left <n> (word|words)": Key("c-left/3:%(n)d/10"),
@@ -288,6 +296,7 @@ grammarCfg.cmd.map = Item(
         "window right": Key("win:down") + Key("right")  + Key("win:up"),
         "window enter": Key("win:down") + Key("enter")  + Key("win:up"),
         "window tab":   Key("win:down") + Key("tab")    + Key("win:up"),
+        #"window tab":   Key("w-tab/30"),
         "window insert": Key("win:down") + Key("insert") + Key("win:up"),
         "window <letters>": Key("win:down") + Text("%(letters)s") + Key("win:up"),
         # Moved to _aenea.py
@@ -298,6 +307,7 @@ grammarCfg.cmd.map = Item(
         "porridge": Key("ctrl:down/3") + Key("tilde") + Key("ctrl:up"),
 
         "meta [<num>]": Key("alt:down/1") + Text("%(num)d") + release,      # Allow to say "meta 2" to hit Alt+2 to switch to the 2nd tab of Firefox, etc
+        #"meta tab": Key("a-tab/20"),
 		#meta": Key("alt:down/3"),    # Or do I prefer "alter"?
 		"meta 1": Key("alt:down/3") + Text("1") + release,      # Allow to say "meta 2" to hit Alt+2 to switch to the 2nd tab of Firefox, etc
 		"meta 2": Key("alt:down/3") + Text("2") + release,      # Allow to say "meta 2" to hit Alt+2 to switch to the 2nd tab of Firefox, etc
@@ -362,7 +372,8 @@ grammarCfg.cmd.map = Item(
         'close bracket':  Key('rparen'),    # Only included here because otherwise, it causes "Close Dragon"!
 
         "escape": Key("escape"),
-        "escape 2": Key("escape") + Key("escape"),
+        #"escape 2 ": Key("escape") + Key("escape"),
+        "cancel": Key("escape"),
 
         'delete [<n> times]':       Key('del:%(n)d'),
 		#'chuck [<n>]':       Key('del:%(n)d'),
@@ -384,7 +395,7 @@ grammarCfg.cmd.map = Item(
         #'hexadecimal': Text("0x"),
         #'suspend': Key('c-z'),
 		#'undo': Key('c-z'),  # Sounds too much like "end"
-		"(geez|woopsy) [<n> times]": Key('c-z:%(n)d'),
+		"geez [<n> times]": Key('c-z:%(n)d'),
 
         #'word <text>': Function(handle_word),
         'number <num>': Text("%(num)d"),
@@ -418,7 +429,7 @@ class KeystrokeRule(MappingRule):
         Dictation("text"),
         #Dictation("text2"),
         Choice("char", specialCharMap),
-        Choice("letters", letterMap),
+        Choice("letters", letterMapBothCases),
         #Choice("modifier1", modifierMap),
         #Choice("modifier2", modifierMap),
         #Choice("modifierSingle", singleModifierMap),

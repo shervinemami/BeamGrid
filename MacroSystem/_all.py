@@ -61,7 +61,7 @@ class RepeatRule(CompoundRule):
 
 
 # This grammar is our main root grammar that we want to apply at all times, except when the mouse grid (invisible window) is open
-invisibleMouseWindowContext = ProxyAppContext(title="InvisibleWindow")
+invisibleMouseWindowContext = ProxyAppContext(title="InvisibleWindow - ")
 notInvisibleMouseWindowContext = ~invisibleMouseWindowContext
 grammar = Grammar("root rule", context=notInvisibleMouseWindowContext)
 #grammar = Grammar("root rule")

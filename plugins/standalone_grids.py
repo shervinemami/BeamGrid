@@ -51,7 +51,7 @@ charWidth = 10
 charHeight = 15
 
 
-TRANSPARENCY_LEVEL = 0.7
+TRANSPARENCY_LEVEL = 0.8
 
 # If there aren't enough characters to cover your whole screen, it can use different colored grids of text
 textColors = ['Blue', 'Green', 'Red', 'Dark Violet', 'Brown4', 'Black']
@@ -140,7 +140,9 @@ class TkTransparent(tk.Tk):
         self.wm_geometry("1x1+0+0")     # Start by showing a tiny pixel sized window that isn't obvious
         self.dimensions = dimensions
 
-        self.charsDict = loadAllSymbols(keyboardMode)
+        # Load all symbols including the hard ones.
+        print
+        self.charsDict = loadAllSymbols(keyboardMode, 100000)
 
         self.reset_xs_ys()
         self.overrideredirect(True)     # Disable window borders, but also hide from the window manager
@@ -301,6 +303,11 @@ class TkTransparent(tk.Tk):
                 if not alreadyCleared:
                     self._canvas.delete("all")
                 self.draw()
+                if self.axis == 'x':
+                    t = "Full"  # X grid shows lots of symbols
+                else:
+                    t = "Mini"  # Y grid and 2D only show about half of the symbols
+                windowServer.setWindowTitle("InvisibleWindow - " + t)
                 self.unhide()       # Display the window onto the screen
                 self.deiconify()    # Display the window
             else:
@@ -332,20 +339,23 @@ class TkTransparent(tk.Tk):
 
     def xmlrpc_keypress(self, event):
         print datetime.now(), "XMLRPC base mouse grid server received keypress event", event
-
-        # If it's in keyboard mode, allow to click mouse buttons by hitting special keys, since there's no other way to mouse click on a keyboard.
-        if self.keyboardMode:
-            btnCode = 0
-            if event['keysym'] == 'Return':
-                print datetime.now(), "Adding a left mouse click to be performed after the mouse move"
-                btnCode = 1     # Left mouse click
-            elif event['keysym'] == 'space':
-                print datetime.now(), "Adding a right mouse click to be performed after the mouse move"
-                btnCode = 3     # Right mouse click
-            if btnCode > 0:
-                # Queue the mouse click for later
-                self.queueMouseClick = btnCode
-                return
+        # If the user is trying to cancel the grid, make sure we don't queue a mouse click at the end of it
+        if event['keysym'] == 'escape':
+            self.queueMouseClick = -1
+        else:
+            # If it's in keyboard mode, allow to click mouse buttons by hitting special keys, since there's no other way to mouse click on a keyboard.
+            if self.keyboardMode:
+                btnCode = 0
+                if event['keysym'] == 'Return':
+                    print datetime.now(), "Adding a left mouse click to be performed after the mouse move"
+                    btnCode = 1     # Left mouse click
+                elif event['keysym'] == 'space':
+                    print datetime.now(), "Adding a right mouse click to be performed after the mouse move"
+                    btnCode = 3     # Right mouse click
+                if btnCode > 0:
+                    # Queue the mouse click for later
+                    self.queueMouseClick = btnCode
+                    return
 
         # Send a key event
         event2 = KeyEvent(event['char'], event['keysym'], event['keycode'])
@@ -514,7 +524,7 @@ class TkTransparent(tk.Tk):
         self.destroy()
         # Kill the 2 grid windows, and wait till the signal has been dispatched.
         #subprocess.call("pkill -f -9 standalone_grids.py", shell=True)
-        subprocess.call("pkill -f -9 createInvisibleWindow.py", shell=True)
+        subprocess.call("pkill -f -9 invisibleWindow.py", shell=True)
         os.kill(os.getpid(), signal.SIGTERM)
         import sys
         sys.exit()
@@ -765,12 +775,13 @@ class BeamGrid(TkTransparent):
         # Set up the geometry
         if square_size == None:
             square_size = 22    # Default for 2D grids. Not used for 1D grids.
-        self.square_size = square_size 
+        self.cellWidth = square_size
+        self.cellHeight = square_size - 4   # Squeeze a bit more cells vertically
         self.fontString = fontFamily + " " + str(fontSize) + " " + fontWeight
         self.fontObject = tkfont.Font(family=fontFamily, size=fontSize, weight=fontWeight)
         self.charWidth = self.fontObject.measure("0")
         self.charHeight = self.fontObject.metrics("linespace")
-        print datetime.now(), "BeamGrid using a square_size of", square_size, "on a screen size of", self.dimensions.width, "x", self.dimensions.height
+        print datetime.now(), "BeamGrid using a square_size of", self.cellWidth, "x", self.cellHeight, "on a screen size of", self.dimensions.width, "x", self.dimensions.height
 
         # If the measurements above don't work on your system, you can hardcode charWidth & charHeight here.
         # eg: On Linux Mint 19 Cinnamon, font 'Monospace 10 normal' is 10x19 pixels for each character.
@@ -786,6 +797,7 @@ class BeamGrid(TkTransparent):
         # Render
         self.pre_redraw()
         self.draw()
+        windowServer.setWindowTitle("InvisibleWindow - 1D")  # Initialize the titlebar for the initial grid mode, to support cached info in showMouseGrid()
         #self.unhide()       # Display the window onto the screen
         print datetime.now(), "Rendering the BeamGrid window"
         self.mainloop()
@@ -814,11 +826,11 @@ class BeamGrid(TkTransparent):
         # Rendering all rows as a single multi-line string is likely to run faster than rendering each line one at a time,
         # but since TK on some OSes (eg: Linux X Windows) adds 1 or 2 pixels of extra padding above and below each line,
         # we will get more densely packed text if we render each line separately, without the padding.
-        print datetime.now(), "Number of characters that fit on the screen:", self.xs_size, "x", self.ys_size
+        print datetime.now(), "Number of characters that fit on the screen:", self.xs_size-1, "x", self.ys_size-1
         self.gridWidth = len(self.charsString) * self.charWidth
         self.gridHeight = self.ys_size * self.charHeight
-        numGridsWide = int((self.dimensions.width + self.gridWidth) / self.gridWidth)
-        numGridsHigh = int((self.dimensions.height + self.gridHeight) / self.gridHeight)
+        numGridsWide = int((self.dimensions.width + self.gridWidth - 1) / self.gridWidth)
+        numGridsHigh = int((self.dimensions.height + self.gridHeight - 1) / self.gridHeight)
         print datetime.now(), "Number of grids:", numGridsWide, "x", numGridsHigh, ". grid level: ", self.level
         if numGridsWide > len(textColors):
             print datetime.now(), "ERROR: Screen is too big for your font size! Please use smaller font size (charWidth and charHeight)!"
@@ -849,12 +861,12 @@ class BeamGrid(TkTransparent):
         # Rendering all rows as a single multi-line string is likely to run faster than rendering each line one at a time,
         # but since TK on some OSes (eg: Linux X Windows) adds 1 or 2 pixels of extra padding above and below each line,
         # we will get more densely packed text if we render each line separately, without the padding.
-        print datetime.now(), "Number of characters that fit on the screen:", self.xs_size, "x", self.ys_size
+        print datetime.now(), "Number of characters that fit on the screen:", self.xs_size-1, "x", self.ys_size-1
         numRows = min(self.ys_size, len(self.charsString))    # Try to fit all characters down the screen, but the screen might be too small
         self.gridWidth = self.xs_size * self.charWidth
         self.gridHeight = numRows * self.charHeight
-        numGridsWide = int((self.dimensions.width + self.gridWidth) / self.gridWidth)
-        numGridsHigh = int((self.dimensions.height + self.gridHeight) / self.gridHeight)
+        numGridsWide = int((self.dimensions.width + self.gridWidth - 1) / self.gridWidth)
+        numGridsHigh = int((self.dimensions.height + self.gridHeight - 1) / self.gridHeight)
         print datetime.now(), "Number of grids:", numGridsWide, "x", numGridsHigh, ". grid level: ", self.level
         if numGridsHigh > len(textColors):
             print datetime.now(), "ERROR: Screen is too big for your font size! Please use smaller font size (charWidth and charHeight)!"
@@ -885,10 +897,10 @@ class BeamGrid(TkTransparent):
     def fill_xs_ys(self):
         # only figure out the coordinates of the lines once
         if not self.xs_ys_filled():
-            for x in range(0, int(self.dimensions.width/self.square_size) + 2):
-                self.xs.append(x*self.square_size)
-            for y in range(0, int(self.dimensions.height/self.square_size) + 2):
-                self.ys.append(y*self.square_size)
+            for x in range(0, int(self.dimensions.width/self.cellWidth) + 2):
+                self.xs.append(x*self.cellWidth)
+            for y in range(0, int(self.dimensions.height/self.cellHeight) + 2):
+                self.ys.append(y*self.cellHeight)
 
     def draw_grid2D(self):
         self.fill_xs_ys()
@@ -898,12 +910,14 @@ class BeamGrid(TkTransparent):
         if self.gridStage == 1:
             gridColor = "green"
 
-        self.gridWidth = self.square_size * len(self.charsString)
-        self.gridHeight = self.square_size * len(self.charsString)
+        self.gridWidth = self.cellWidth * len(self.charsString)
+        self.gridHeight = self.cellHeight * len(self.charsString)
         
         # Draw the grid bars
         xs_size = len(self.xs)
         ys_size = len(self.ys)
+        print datetime.now(), "Number of symbols we can shown on the screen:", xs_size-1, "x", ys_size-1
+
         for lx in range(0, xs_size):
             fill = "black"
             if lx % 3:
@@ -997,8 +1011,8 @@ class BeamGrid(TkTransparent):
 
     def getPixelFromChar2D(self, cx, cy):
         # Get the screen pixel coord for the cell with the 2 given characters
-        mx = int((cx + 0.5) * self.square_size + 0.5) + (self.level * self.gridWidth)   # Assume level is only horizontal
-        my = int((cy + 0.5) * self.square_size + 0.5) + 0
+        mx = int((cx + 0.5) * self.cellWidth + 0.5) + (self.level * self.gridWidth)   # Assume level is only horizontal
+        my = int((cy + 0.5) * self.cellHeight + 0.5) + 0
         return (mx, my)
 
 

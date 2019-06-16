@@ -23,7 +23,7 @@ except ImportError:
     raise
 
 from mousegridutils import mouseActions
-
+from mousegridutils import mostNumbers
 
 
 grammar = Grammar('aenea mouse start grammar')
@@ -59,10 +59,10 @@ class CenterMouseRule(CompoundRule):
 
 
 class NudgeMouseRule(CompoundRule):
-    spec = "nudge <direction> [<bump>] [<mouseAction>]"
+    spec = "nudge <direction> [<distance>] [<mouseAction>]"
     extras = [
         Choice("mouseAction", mouseActions),
-        Choice("direction", {
+        Choice("direction", {                       # Allow to say either up or North
             "North":        1,
             "East":         2,
             "South":        3,
@@ -71,37 +71,50 @@ class NudgeMouseRule(CompoundRule):
             "South East":   6,
             "South West":   7,
             "North West":   8,
+            "up":         1,
+            "right":      2,
+            "down":       3,
+            "left":       4,
+            "up right":   5,
+            "down right": 6,
+            "down left":  7,
+            "up left":    8,
             }),
-        IntegerRef("bump", 1, 101),
+        Choice("distance", mostNumbers),
     ]
     defaults = {
         "mouseAction": -1,  # Don't click unless they ask for it
-        "bump": 7,  # Default distance to nudge by
     }
-
+    
     def _process_recognition(self, node, extras):
         direction = extras["direction"]
         mouseAction = extras["mouseAction"]
-        bump = extras["bump"]
         
-        print "Nudging the mouse in direction", direction, "by", bump
+        # Figure out how much to move by
+        distance = 7  # Default distance to nudge by
+        try:
+            distance = extras["distance"]
+        except:
+            pass
+        
+        print "Nudging the mouse in direction", direction, "by", distance
         try:
             if direction == 1:
-                mouseServer.move_mouse_relative(0, -bump)
+                mouseServer.move_mouse_relative(0, -distance)
             elif direction == 2:
-                mouseServer.move_mouse_relative(bump, 0)
+                mouseServer.move_mouse_relative(distance, 0)
             elif direction == 3:
-                mouseServer.move_mouse_relative(0, bump)
+                mouseServer.move_mouse_relative(0, distance)
             elif direction == 4:
-                mouseServer.move_mouse_relative(-bump, 0)
+                mouseServer.move_mouse_relative(-distance, 0)
             elif direction == 5:
-                mouseServer.move_mouse_relative(bump, -bump)
+                mouseServer.move_mouse_relative(distance, -distance)
             elif direction == 6:
-                mouseServer.move_mouse_relative(bump, bump)
+                mouseServer.move_mouse_relative(distance, distance)
             elif direction == 7:
-                mouseServer.move_mouse_relative(-bump, bump)
+                mouseServer.move_mouse_relative(-distance, distance)
             elif direction == 8:
-                mouseServer.move_mouse_relative(-bump, -bump)
+                mouseServer.move_mouse_relative(-distance, -distance)
         except:
             print "Couldn't access the mouse grid server, is it running?"
             return

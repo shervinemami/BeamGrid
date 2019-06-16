@@ -39,64 +39,107 @@ server = xmlrpclib.ServerProxy(MOUSE_SERVER_ADDRESS)
 
 # Create an ordered dictionary of all the symbols and phrases we might use in our mouse grids.
 # Symbols that are easier to use should be placed near the top of the list, since some screens won't need to show the symbols on the bottom of the list.
-charsDict = loadAllSymbols(keyboardMode=False)
-#print charsDict
+# Rather than listen for all possible symbols in all cases, only listen for the actual symbols that can fit on the screen.
+# Make sure you update "TOTAL_SYMBOLS_FOR_MINI_GRID" depending on your screen resolution and font size settings in "standalone_grids.py"!
+TOTAL_SYMBOLS_FOR_2DGRID_X = 88
+TOTAL_SYMBOLS_FOR_2DGRID_Y = 61
+charsDict2D_X = loadAllSymbols(keyboardMode=False, extendedSymbolsLevel=3, extendedSymbolsCount=TOTAL_SYMBOLS_FOR_2DGRID_X)
+charsDict2D_Y = loadAllSymbols(keyboardMode=False, extendedSymbolsLevel=3, extendedSymbolsCount=TOTAL_SYMBOLS_FOR_2DGRID_Y)
+charsDict1D_X = loadAllSymbols(keyboardMode=False, extendedSymbolsLevel=3, extendedSymbolsCount=999999)
+# charsDict1D_Y = charsDict2D_X   # 1D Y grid uses slightly less symbols than 2D X axis, so just re-use it
+#print "charsDict2D_X", charsDict2D_X
+#print "charsDict1D_X", charsDict1D_X
 
 
-class ExtraSymbolsRule(CompoundRule):
-    spec = "(<symbol1> [<symbol2>] [<mouseAction>]) | <mouseAction>"
+# Handle the various grid mode grammars
+def doRecognitionLevel(node, extras, mode):
+    # Get the input data
+    symbol1 = ""
+    symbol2 = ""
+    mouseAction = -1
+    try:
+        symbol1 = extras["symbol1"]
+    except:
+        pass
+    
+    try:
+        symbol2 = extras["symbol2"]
+    except:
+        pass
+    
+    try:
+        mouseAction = extras["mouseAction"]
+    except:
+        pass
+
+    #print node.pretty_string()
+    words = node.words()
+    print u"In doRecognitionLevel(), mode", mode, ". spoken words:", words,
+    if len(symbol1) > 0:
+        print symbol1.encode('utf-8'),
+    if len(symbol2) > 0:
+        print symbol2.encode('utf-8'),
+    print u", mouse action", mouseAction
+
+    # Move the mouse cursor by sending the symbol to the mouse grid RPC server.
+    phrase1 = ""
+    symbol1Event = None
+    symbol2Event = None
+    if len(symbol1) > 0:
+        phrase1 = node.results[0][0] #.encode("utf-8")
+        symbol1Event = SymbolEvent(phrase1, symbol1)
+    phrase2 = ""
+    if len(symbol2) > 0:
+        phrase2 = node.results[1][0]
+        symbol2Event = SymbolEvent(phrase2, symbol2)
+    # If we have a symbol or possibly 2, send the 1 or 2 signals
+    if symbol1Event:
+        if symbol2Event:
+            server.injectSymbols(symbol1Event, symbol2Event)
+        else:
+            server.injectSymbol(symbol1Event)
+
+    # Possibly press a mouse button action
+    button_int = int(mouseAction)
+    if button_int >= 0:
+        print "Calling clickMouseGrid(%d) on the server" % (button_int)
+        # Run our aenea plugin script that moves and clicks the mouse in Linux.
+        pid = aenea.communications.server.clickMouseGrid(button_int)
+
+
+class MouseActionGridRule(CompoundRule):
+    spec = "<mouseAction>"
     extras = [
-        Choice("symbol1", charsDict),
-        Choice("symbol2", charsDict),
         Choice("mouseAction", mouseActions),
     ]
-    defaults = {
-        "symbol1": "",
-        "symbol2": "",
-        "mouseAction": -1,
-    }
 
     def _process_recognition(self, node, extras):
-        symbol1 = extras["symbol1"]
-        symbol2 = extras["symbol2"]
-        mouseAction = extras["mouseAction"]
+        doRecognitionLevel(node, extras, "Action")
 
-        #print node.pretty_string()
-        words = node.words()
-        print u"In ExtraSymbolsRule::_process_recognition(). spoken words:", words,
-        if len(symbol1) > 0:
-            print symbol1.encode('utf-8'),
-        if len(symbol2) > 0:
-            print symbol2.encode('utf-8'),
-        print u", mouse action", mouseAction
 
-        #if symbol2:
-        #    print u",", symbol2.encode('utf-8')
+class ExtraSymbolsMiniGridRule(CompoundRule):
+    spec = "<symbol1> [<symbol2>] [<mouseAction>]"
+    extras = [
+        Choice("symbol1", charsDict2D_X),
+        Choice("symbol2", charsDict2D_Y),
+        Choice("mouseAction", mouseActions),
+    ]
 
-        # Move the mouse cursor by sending the symbol to the mouse grid RPC server.
-        phrase1 = ""
-        symbol1Event = None
-        symbol2Event = None
-        if len(symbol1) > 0:
-            phrase1 = node.results[0][0] #.encode("utf-8")
-            symbol1Event = SymbolEvent(phrase1, symbol1)
-        phrase2 = ""
-        if len(symbol2) > 0:
-            phrase2 = node.results[1][0]
-            symbol2Event = SymbolEvent(phrase2, symbol2)
-        # If we have a symbol or possibly 2, send the 1 or 2 signals
-        if symbol1Event:
-            if symbol2Event:
-                server.injectSymbols(symbol1Event, symbol2Event)
-            else:
-                server.injectSymbol(symbol1Event)
+    def _process_recognition(self, node, extras):
+        print u"node", node
+        print u"extras", extras
+        doRecognitionLevel(node, extras, "Mini")
 
-        # Possibly press a mouse button action
-        button_int = int(mouseAction)
-        if button_int >= 0:
-            print "Calling clickMouseGrid(%d) on the server" % (button_int)
-            # Run our aenea plugin script that moves and clicks the mouse in Linux.
-            pid = aenea.communications.server.clickMouseGrid(button_int)
+
+class ExtraSymbolsFullGridRule(CompoundRule):
+    spec = "<symbol1> [<mouseAction>]"
+    extras = [
+        Choice("symbol1", charsDict1D_X),
+        Choice("mouseAction", mouseActions),
+    ]
+
+    def _process_recognition(self, node, extras):
+        doRecognitionLevel(node, extras, "Full")
 
 
 # Allow to easily close the mouse grid while it's displayed
@@ -116,15 +159,28 @@ class MouseCancelRule(MappingRule):
     }
 
 
-context = ProxyAppContext(title="InvisibleWindow")
-grammar = Grammar('extra symbols grammar', context=context)
-grammar.add_rule(ExtraSymbolsRule())
-grammar.add_rule(MouseCancelRule())
-grammar.load()
+contextMini = ProxyAppContext(title="InvisibleWindow - Mini")
+grammarMini = Grammar('extra symbols mini grammar', context=contextMini)
+grammarMini.add_rule(ExtraSymbolsMiniGridRule())
+grammarMini.add_rule(MouseCancelRule())
+grammarMini.add_rule(MouseActionGridRule())
+grammarMini.load()
+
+contextFull = ProxyAppContext(title="InvisibleWindow - Full")
+grammarFull = Grammar('extra symbols full grammar', context=contextFull)
+grammarFull.add_rule(ExtraSymbolsFullGridRule())
+grammarFull.add_rule(MouseCancelRule())
+grammarFull.add_rule(MouseActionGridRule())
+grammarFull.load()
 
 
 def unload():
-    global grammar
-    if grammar:
-        grammar.unload()
-    grammar = None
+    global grammarMini
+    if grammarMini:
+        grammarMini.unload()
+    grammarMini = None
+
+    global grammarFull
+    if grammarFull:
+        grammarFull.unload()
+    grammarFull = None

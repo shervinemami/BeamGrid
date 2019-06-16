@@ -46,7 +46,7 @@ def key_callback(event):
     # Some special keys like 'Esc' cause problems when sending over XMLRPC. Convert to a spacebar that will get ignored later.
     if event.keysym == 'Escape':
         event.char = ' '
-        event.keysym = 'space'
+        event.keysym = 'escape'
         event.keycode = 65
     # If they said "And" but it sounded like "End", something we don't show in our mouse grid, convert "End" to "And"
     if event.keysym == 'End':
@@ -99,6 +99,12 @@ def hide():
     print datetime.now(), "- InvisibleWindow hide is done."
 
 
+def setWindowTitle(title = "InvisibleWindow"):
+    print datetime.now(), "- InvisibleWindow setting the window title to", title
+    root.wm_title(title)
+
+
+
 # Restrict XMLRPC server to a particular path.
 class RequestHandler(SimpleXMLRPCRequestHandler):
     rpc_paths = ('/RPC2',)
@@ -111,6 +117,7 @@ def setup_xmlrpc_server():
     windowServer.register_function(xmlrpc_kill, "kill")
     windowServer.register_function(hide, "hide")
     windowServer.register_function(unhide, "unhide")
+    windowServer.register_function(setWindowTitle, "setWindowTitle")
     #TODO: Disable this for security when not debugging:
     #windowServer.register_introspection_functions()
     return windowServer

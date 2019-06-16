@@ -24,6 +24,7 @@ import sys
 import time
 
 import dragonfly
+from dragonfly.grammar.recobs import RecognitionObserver
 
 try:
     # Internal NatLink module for reloading grammars.
@@ -66,10 +67,13 @@ command_table = [
     'disable keyboard',
     'enable keyboard',
     'shervs test',
+    'pause',
+    'play music',
     'change to Linux',
     'change to Windows',
     'window list',
     'shelf list',
+    'show history',     # Note that "Show Recognition History" is already a native command in Dragon
     ]
 command_table = aenea.configuration.make_grammar_commands(
     'aenea',
@@ -84,10 +88,51 @@ def topy(path):
     return path
 
 
+#----------------------------------------------------------------------------------------------------------
+# Send all Dragon recognitions to Linux using Aenea so it can be displayed on the host machine.
+class LinuxRecognitionEcho(RecognitionObserver):
+    """Handler that echoes the recognition in Linux"""
+
+    #def __init__(self):
+    #    self.wordsList = []
+
+    def on_begin(self):
+        pid = aenea.communications.server.updateRecognition("...")
+
+    def on_recognition(self, words):
+        wordsString = ' '.join(words)
+        pid = aenea.communications.server.updateRecognition(wordsString)
+        print "SPOKEN:", wordsString
+        print
+
+    def on_failure(self):
+        pid = aenea.communications.server.updateRecognition("<???>")
+        print "SPOKEN: <???>"
+        print
+
+linux_echo_handler = LinuxRecognitionEcho()
+
+# Register our recognition observer with Dragon. Note that we will also unregister it when grammars are unloaded,
+# otherwise there will be multiple echo handlers running at the same time!
+linux_echo_handler.register()
+
+
+#----------------------------------------------------------------------------------------------------------
+# Natlink callback function for whenever the Dragon microphone changes state between awake and sleep!
+def changeCallback(cbType, args):
+    print cbType, # 'mic' or 'user'
+    print "=",
+    print args    # 'off', 'on', 'disabled' or 'sleeping'.
+    if cbType == "mic":
+        pid = aenea.communications.server.updateRecognition("<DRAGON IS " + args.upper() + ">")
+
+#----------------------------------------------------------------------------------------------------------
+
 class DisableRule(dragonfly.CompoundRule):
     spec = command_table['disable proxy server']
 
     def _process_recognition(self, node, extras):
+        pid = aenea.communications.server.updateRecognition("disable proxy server")
         aenea.config.disable_proxy()
 
 
@@ -95,6 +140,7 @@ class EnableRule(dragonfly.CompoundRule):
     spec = command_table['enable proxy server']
 
     def _process_recognition(self, node, extras):
+        pid = aenea.communications.server.updateRecognition("enable proxy server")
         aenea.config.enable_proxy()
 
 
@@ -149,12 +195,14 @@ def load_code():
         print "finished reloading"
 
 def reload_code():
+    pid = aenea.communications.server.updateRecognition("force natlink to reload all grammars")
     unload_code()
     load_code()
 
 
 def disableKeyboard():
     print "Disabling just the keyboard grammar."
+    pid = aenea.communications.server.updateRecognition("disable keyboard")
     # Unload the modules except for all the "core" and "aenea" modules
     unload_code("aenea")
 
@@ -166,6 +214,7 @@ def disableKeyboard():
 
 def enableKeyboard():
     print "Enabling keyboard."
+    pid = aenea.communications.server.updateRecognition("enable keyboard")
     load_code()
 
     print "Switching Dragon to Command mode."
@@ -176,11 +225,34 @@ def enableKeyboard():
 
 def shervstest():
     print "Running Shervs Test!"
-
+    pid = aenea.communications.server.updateRecognition("shervs test")
+    
     #from six.moves import xmlrpc_client
     #server = xmlrpc_client.ServerProxy("http://127.0.0.1:12400", allow_none=False)
     #remote_title = server.GetActiveWindowTitle()
     #print "Remote ", remote_title
+
+
+def pauseDragon():
+    print "Pausing Dragon"
+    pid = aenea.communications.server.updateRecognition("pause")
+    # Pause Dragon, similar to saying "Stop Listening"
+    action = dragonfly.Key("npdiv")     # Numpad "/" key
+    action.execute()
+    
+    # Also pause my music player
+    #action = aenea.Key("ctrl:down, shift:down, f12") + aenea.Key("ctrl:up, shift:up")
+    #action.execute()
+    pid = aenea.communications.server.controlMusic("pause")
+
+
+def playMusic():
+    print "Playing music"
+    #pid = aenea.communications.server.updateRecognition("play music")
+    # Play my music player
+    #action = aenea.Key("ctrl:down, shift:down, f12") + aenea.Key("ctrl:up, shift:up")
+    #action.execute()
+    pid = aenea.communications.server.controlMusic("play")
 
 
 # Switching OSes, when Windows is in a VM on top of a Linux host:
@@ -275,35 +347,46 @@ def changeToLinuxNative():
 
 
 def changeToWindows():
+    pid = aenea.communications.server.updateRecognition("change to windows")
     #changeToWindowsNative()
     changeToWindowsVM()
 
 def changeToLinux():
+    pid = aenea.communications.server.updateRecognition("change to linux")
     #changeToLinuxNative()
     changeToLinuxVM()
 
 
 def showWindowList():
     print "Showing the Linux window list."
+    pid = aenea.communications.server.updateRecognition("window list")
 
     #"show window list":      Key("win:down/999, tab") + Key("win:up"),
     #"show window list":      Key("w-l") + Key("tab") + Key("down"),
-    #action = dragonfly.Key("ctrl:down, alt:down") + dragonfly.Key("ctrl:up, alt:up")
-    #action = dragonfly.Key("ctrl:down") + dragonfly.Key("o")
+    #action = aenea.Key("ctrl:down, alt:down") + aenea.Key("ctrl:up, alt:up")
+    #action = aenea.Key("ctrl:down") + aenea.Key("o")
     #action.execute()
     #time.sleep(0.3)
-    #action = dragonfly.Key("tab")
+    #action = aenea.Key("tab")
     #action.execute()
     #time.sleep(0.1)
-    #action = dragonfly.Key("down")
+    #action = aenea.Key("down")
     #action.execute()
 
     # Run our aenea plugin script that shows the Linux window list.
     aenea.communications.server.showWindowList()
 
 
+def showHistory():
+    print "Showing the recognition history."
+
+    # Run our aenea plugin script that shows the Dragon recognition history
+    aenea.communications.server.showHistory()
+
+
 def showShelfList():
     print "Showing the Linux shelf list."
+    pid = aenea.communications.server.updateRecognition("shelf list")
 
     # Run our aenea plugin script that shows the Linux clipboard shelf list.
     # Value -1 means show the graphical list.
@@ -311,6 +394,7 @@ def showShelfList():
 
 def shelfNumber(val):
     print "Running shelf number", val
+    pid = aenea.communications.server.updateRecognition("shelf " + val)
 
     # Run our aenea plugin script that pastes the shelf item
     aenea.communications.server.shelfCommand(val)
@@ -325,6 +409,12 @@ class EnableKeyboard(dragonfly.MappingRule):
 class ShervsTest(dragonfly.MappingRule):
     mapping = {command_table['shervs test']: dragonfly.Function(shervstest)}
 
+class PauseDragon(dragonfly.MappingRule):
+    mapping = {command_table['pause']: dragonfly.Function(pauseDragon)}
+
+class PlayMusic(dragonfly.MappingRule):
+    mapping = {command_table['play music']: dragonfly.Function(playMusic)}
+
 class ChangeToLinux(dragonfly.MappingRule):
     mapping = {command_table['change to Linux']: dragonfly.Function(changeToLinux)}
 
@@ -336,6 +426,9 @@ class ShowWindowList(dragonfly.MappingRule):
 
 class ShowShelfList(dragonfly.MappingRule):
     mapping = {command_table['shelf list']: dragonfly.Function(showShelfList)}
+
+class ShowHistory(dragonfly.MappingRule):
+    mapping = {command_table['show history']: dragonfly.Function(showHistory)}
 
 class ShelfNumber(dragonfly.MappingRule):
     mapping = {
@@ -382,10 +475,13 @@ grammar.add_rule(ChangeServer())
 grammar.add_rule(DisableKeyboard())
 grammar.add_rule(EnableKeyboard())
 grammar.add_rule(ShervsTest())
+grammar.add_rule(PauseDragon())
+grammar.add_rule(PlayMusic())
 grammar.add_rule(ChangeToLinux())
 grammar.add_rule(ChangeToWindows())
 grammar.add_rule(ShowWindowList())
 grammar.add_rule(ShowShelfList())
+grammar.add_rule(ShowHistory())
 grammar.add_rule(ShelfNumber())
 
 grammar.load()
@@ -397,3 +493,6 @@ def unload():
     if grammar:
         grammar.unload()
     grammar = None
+    
+    global linux_echo_handler
+    linux_echo_handler.unregister()

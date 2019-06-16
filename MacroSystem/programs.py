@@ -40,18 +40,23 @@ def changeWindow(command):
     action.execute()
 
 def changeToFirefox():
+    pid = aenea.communications.server.updateRecognition("<Change to Firefox>")
     return changeWindow("f")
 
 def changeToConsole():
+    pid = aenea.communications.server.updateRecognition("<Change to Console>")
     return changeWindow("c")
 
 def changeToText():
+    pid = aenea.communications.server.updateRecognition("<Change to Text>")
     return changeWindow("t")
 
 def changeToSublime():
+    pid = aenea.communications.server.updateRecognition("<Change to Sublime>")
     return changeWindow("s")
 
 def changeToDolphin():
+    pid = aenea.communications.server.updateRecognition("<Change to Dolphin>")
     return changeWindow("d")
 
 
@@ -151,11 +156,12 @@ class ProgramsRule(MappingRule):
 
         "perforce": Text("p4"),
         "P 4": Text("p4"),
-        "P 4 opened": Text("p4opened") + Key("enter"),
-        "P 4 diff": Text("p4diff "),
-        "P 4 login": Text("p4 login") + Key("enter"),
-        "P 4 changes": Text("p4changes") + Key("enter"),
-        "P 4 changed": Text("p4changed") + Key("enter"),
+        "P 4 opened": Text("p4opened"),
+        "P 4 diff": Text("p4diff"),
+        "P 4 login": Text("p4 login"),
+        "P 4 changes": Text("p4changes"),
+        "P 4 changed": Text("p4changed"),
+        "P 4 sync": Text("p4sync"),
         "SSH remote": Text("ssh -XC $REMOTE") + Key("enter"),
         "dollar sign remote": Text("$REMOTE"),
         "profile remote": Text("profile_remote whole"),
