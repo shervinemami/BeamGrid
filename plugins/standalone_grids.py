@@ -142,7 +142,7 @@ class TkTransparent(tk.Tk):
 
         # Load all symbols including the hard ones.
         print
-        self.charsDict = loadAllSymbols(keyboardMode, 100000)
+        self.charsDict = loadAllSymbols(keyboardMode, extendedSymbolsLevel=100000)
 
         self.reset_xs_ys()
         self.overrideredirect(True)     # Disable window borders, but also hide from the window manager

@@ -138,7 +138,7 @@ mostNumbers.update(bigNumbers)    # merge both dictionaries
 
 # Create an ordered dictionary of all the symbols and phrases we might use in our mouse grids.
 # Symbols that are easier to use should be placed near the top of the list, since some screens won't need to show the symbols on the bottom of the list.
-def loadAllSymbols(keyboardMode, extendedSymbolsLevel = 1, extendedSymbolsCount = 9999999):
+def loadAllSymbols(keyboardMode, includeUpperCase = False, extendedSymbolsLevel = 1, extendedSymbolsCount = 9999999):
     print datetime.now(), "Loading all symbols up to level", extendedSymbolsLevel, ", count", extendedSymbolsCount, ". keyboardMode is", keyboardMode, ".",
     charsDict = OrderedDict()
 
@@ -164,6 +164,15 @@ def loadAllSymbols(keyboardMode, extendedSymbolsLevel = 1, extendedSymbolsCount 
             c += 1
             #print u"(", key, u", ", val
             charsDict[key] = val
+
+    # Now optionally add the uppercase version of every letter.
+    if includeUpperCase:
+        for key, val in sorted_letters:
+            if c < extendedSymbolsCount:
+                c += 1
+                #print u"(maxo ", key, u", ", val.upper()
+                charsDict["maxo " + key] = val.upper()
+
 
     # Then add some extra symbols that are on keyboards and are a single word (thus can be easy to say, and allows more symbols for mouse grid modes):
     for key, val in punctuationMap1.iteritems():
