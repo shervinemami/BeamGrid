@@ -23,6 +23,9 @@ import os
 import sys
 import time
 
+# If you have a BlinkStick USB controlled RGB LED, then set this to True.
+ENABLE_BLINKSTICK = False
+
 import dragonfly
 from dragonfly.grammar.recobs import RecognitionObserver
 
@@ -118,13 +121,58 @@ linux_echo_handler.register()
 
 
 #----------------------------------------------------------------------------------------------------------
+# BlinkStick USB LED
+if ENABLE_BLINKSTICK:
+    try:
+        from blinkstick import blinkstick
+        bstick = blinkstick.find_first()
+        if bstick:
+            print "Found BlinkStick USB LED", bstick.get_serial()
+        else:
+            print "Error: Couldn't access the BlinkStick USB LED"
+    except:
+        bstick = None
+# Manually keep track of which recognition grammar mode Dragon is in (Normal vs Command mode)
+GRAMMAR_MODE = "Normal"
+
+# Show the current mode, using the USB LED
+# args can be 'off', 'on', 'disabled' or 'sleeping'.
+def updateLED(args):
+    if ENABLE_BLINKSTICK:
+        try:
+            if bstick:
+                V = 5  # LED Brightness upto 255
+                if args == "on":
+                    # Set my BlinkStick LED to green (ON, Normal mode) or blue (ON, Command mode)
+                    if GRAMMAR_MODE == "Normal":
+                        bstick.set_color(red=0, green=V, blue=0)
+                    else:
+                        bstick.set_color(red=0, green=0, blue=V)
+                elif args == "disabled":
+                    # Set my BlinkStick LED to red (disabled)
+                    bstick.set_color(red=V*2, green=0, blue=0)
+                elif args == "sleeping":
+                    # Set my BlinkStick LED to purple (sleeping)
+                    bstick.set_color(red=1, green=0, blue=0)
+                elif args == "off":
+                    # Set my BlinkStick LED to black (off)
+                    bstick.set_color(red=0, green=0, blue=0)
+        except:
+            print "Warning: Couldn't access the BlinkStick USB LED"
+            pass
+
+
+#----------------------------------------------------------------------------------------------------------
 # Natlink callback function for whenever the Dragon microphone changes state between awake and sleep!
 def changeCallback(cbType, args):
     print cbType, # 'mic' or 'user'
     print "=",
     print args    # 'off', 'on', 'disabled' or 'sleeping'.
     if cbType == "mic":
+        # Show on the Linux server
         pid = aenea.communications.server.updateRecognition("<DRAGON IS " + args.upper() + ">")
+        # Show on the USB LED
+        updateLED(args)
 
 #----------------------------------------------------------------------------------------------------------
 
@@ -269,6 +317,11 @@ def changeToLinuxVM():
     action = dragonfly.Mimic("switch", "to", "command", "mode")
     #action = dragonfly.Playback([(["switch", "to", "command", "mode"], 0.0)])
     action.execute()
+
+    # Show on the USB LED
+    global GRAMMAR_MODE
+    GRAMMAR_MODE = "Command"
+    updateLED("on")
     time.sleep(0.1)
 
     # Make sure all keyboard input gets relayed to the Linux aenea server!
@@ -314,12 +367,17 @@ def changeToWindowsVM():
     action = dragonfly.Mimic("switch", "to", "normal", "mode")
     #action = dragonfly.Playback([(["switch", "to", "normal", "mode"], 0.0)])
     action.execute()
+
+    # Show on the USB LED
+    global GRAMMAR_MODE
+    GRAMMAR_MODE = "Normal"
+    updateLED("on")
     time.sleep(0.3)
 
     # Make sure the DragonPad menu bar isn't selected
     #action = dragonfly.Mimic("escape")
     #action.execute()
-    time.sleep(0.3)
+    #time.sleep(0.3)
 
 
 # Switching OSes, when Windows is another PC:
