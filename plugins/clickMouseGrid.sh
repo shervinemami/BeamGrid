@@ -25,11 +25,11 @@ if [ $1 -eq 8 ]; then
 fi
 if [ $1 -eq 9 ]; then
     # Send a double-click
-    xdotool click --repeat 2 --delay 200 1
+    xdotool click --repeat 2 --delay 100 1
 fi
 if [ $1 -eq 10 ]; then
     # Send a triple-click
-    xdotool click --repeat 3 --delay 200 1
+    xdotool click --repeat 3 --delay 100 1
 fi
 if [ $1 -eq 11 ]; then
     # Hold down the control key while clicking

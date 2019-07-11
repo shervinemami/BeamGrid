@@ -23,9 +23,6 @@ import os
 import sys
 import time
 
-# If you have a BlinkStick USB controlled RGB LED, then set this to True.
-ENABLE_BLINKSTICK = False
-
 import dragonfly
 from dragonfly.grammar.recobs import RecognitionObserver
 
@@ -59,6 +56,24 @@ try:
     print 'Aenea: Successfully connected to server.'
 except:
     print 'Aenea: Unable to connect to server.'
+
+
+# Try to load the OS functions if they exist, otherwise use empty functions.
+def changeToLinux():
+    pass
+def changeToWindows():
+    pass
+def microphoneStateCallback(cbType, args):
+    pass
+def logRecognition(msg):
+    pass
+try:
+    from systemutils import changeToLinux
+    from systemutils import changeToWindows
+    from systemutils import microphoneStateCallback
+    from systemutils import logRecognition
+except:
+    pass
 
 
 # Commands that can be rebound.
@@ -100,16 +115,16 @@ class LinuxRecognitionEcho(RecognitionObserver):
     #    self.wordsList = []
 
     def on_begin(self):
-        pid = aenea.communications.server.updateRecognition("...")
+        logRecognition("...")
 
     def on_recognition(self, words):
         wordsString = ' '.join(words)
-        pid = aenea.communications.server.updateRecognition(wordsString)
+        logRecognition(wordsString)
         print "SPOKEN:", wordsString
         print
 
     def on_failure(self):
-        pid = aenea.communications.server.updateRecognition("<???>")
+        logRecognition("<???>")
         print "SPOKEN: <???>"
         print
 
@@ -121,58 +136,13 @@ linux_echo_handler.register()
 
 
 #----------------------------------------------------------------------------------------------------------
-# BlinkStick USB LED
-if ENABLE_BLINKSTICK:
-    try:
-        from blinkstick import blinkstick
-        bstick = blinkstick.find_first()
-        if bstick:
-            print "Found BlinkStick USB LED", bstick.get_serial()
-        else:
-            print "Error: Couldn't access the BlinkStick USB LED"
-    except:
-        bstick = None
-# Manually keep track of which recognition grammar mode Dragon is in (Normal vs Command mode)
-GRAMMAR_MODE = "Normal"
-
-# Show the current mode, using the USB LED
-# args can be 'off', 'on', 'disabled' or 'sleeping'.
-def updateLED(args):
-    if ENABLE_BLINKSTICK:
-        try:
-            if bstick:
-                V = 5  # LED Brightness upto 255
-                if args == "on":
-                    # Set my BlinkStick LED to green (ON, Normal mode) or blue (ON, Command mode)
-                    if GRAMMAR_MODE == "Normal":
-                        bstick.set_color(red=0, green=V, blue=0)
-                    else:
-                        bstick.set_color(red=0, green=0, blue=V)
-                elif args == "disabled":
-                    # Set my BlinkStick LED to red (disabled)
-                    bstick.set_color(red=V*2, green=0, blue=0)
-                elif args == "sleeping":
-                    # Set my BlinkStick LED to purple (sleeping)
-                    bstick.set_color(red=1, green=0, blue=0)
-                elif args == "off":
-                    # Set my BlinkStick LED to black (off)
-                    bstick.set_color(red=0, green=0, blue=0)
-        except:
-            print "Warning: Couldn't access the BlinkStick USB LED"
-            pass
-
-
-#----------------------------------------------------------------------------------------------------------
 # Natlink callback function for whenever the Dragon microphone changes state between awake and sleep!
 def changeCallback(cbType, args):
     print cbType, # 'mic' or 'user'
     print "=",
     print args    # 'off', 'on', 'disabled' or 'sleeping'.
     if cbType == "mic":
-        # Show on the Linux server
-        pid = aenea.communications.server.updateRecognition("<DRAGON IS " + args.upper() + ">")
-        # Show on the USB LED
-        updateLED(args)
+        microphoneStateCallback(cbType, args)
 
 #----------------------------------------------------------------------------------------------------------
 
@@ -180,7 +150,7 @@ class DisableRule(dragonfly.CompoundRule):
     spec = command_table['disable proxy server']
 
     def _process_recognition(self, node, extras):
-        pid = aenea.communications.server.updateRecognition("disable proxy server")
+        logRecognition("disable proxy server")
         aenea.config.disable_proxy()
 
 
@@ -188,7 +158,7 @@ class EnableRule(dragonfly.CompoundRule):
     spec = command_table['enable proxy server']
 
     def _process_recognition(self, node, extras):
-        pid = aenea.communications.server.updateRecognition("enable proxy server")
+        logRecognition("enable proxy server")
         aenea.config.enable_proxy()
 
 
@@ -243,14 +213,14 @@ def load_code():
         print "finished reloading"
 
 def reload_code():
-    pid = aenea.communications.server.updateRecognition("force natlink to reload all grammars")
+    logRecognition("force natlink to reload all grammars")
     unload_code()
     load_code()
 
 
 def disableKeyboard():
     print "Disabling just the keyboard grammar."
-    pid = aenea.communications.server.updateRecognition("disable keyboard")
+    logRecognition("disable keyboard")
     # Unload the modules except for all the "core" and "aenea" modules
     unload_code("aenea")
 
@@ -262,7 +232,7 @@ def disableKeyboard():
 
 def enableKeyboard():
     print "Enabling keyboard."
-    pid = aenea.communications.server.updateRecognition("enable keyboard")
+    logRecognition("enable keyboard")
     load_code()
 
     print "Switching Dragon to Command mode."
@@ -273,7 +243,7 @@ def enableKeyboard():
 
 def shervstest():
     print "Running Shervs Test!"
-    pid = aenea.communications.server.updateRecognition("shervs test")
+    logRecognition("shervs test")
     
     #from six.moves import xmlrpc_client
     #server = xmlrpc_client.ServerProxy("http://127.0.0.1:12400", allow_none=False)
@@ -283,7 +253,7 @@ def shervstest():
 
 def pauseDragon():
     print "Pausing Dragon"
-    pid = aenea.communications.server.updateRecognition("pause")
+    logRecognition("pause")
     # Pause Dragon, similar to saying "Stop Listening"
     action = dragonfly.Key("npdiv")     # Numpad "/" key
     action.execute()
@@ -296,128 +266,16 @@ def pauseDragon():
 
 def playMusic():
     print "Playing music"
-    #pid = aenea.communications.server.updateRecognition("play music")
+    #logRecognition("play music")
     # Play my music player
     #action = aenea.Key("ctrl:down, shift:down, f12") + aenea.Key("ctrl:up, shift:up")
     #action.execute()
     pid = aenea.communications.server.controlMusic("play")
 
 
-# Switching OSes, when Windows is in a VM on top of a Linux host:
-def changeToLinuxVM():
-    print "Changing to Linux from Windows VM!"
-
-    # Run our aenea plugin script that moves the Windows VM to a minimally visible window in Linux.
-    print "Calling change OS"
-    aenea.communications.server.change_OS("Linux")
-    print "Finished calling change OS"
-    time.sleep(0.1)
-
-    print "Switching Dragon to Command mode."
-    action = dragonfly.Mimic("switch", "to", "command", "mode")
-    #action = dragonfly.Playback([(["switch", "to", "command", "mode"], 0.0)])
-    action.execute()
-
-    # Show on the USB LED
-    global GRAMMAR_MODE
-    GRAMMAR_MODE = "Command"
-    updateLED("on")
-    time.sleep(0.1)
-
-    # Make sure all keyboard input gets relayed to the Linux aenea server!
-    #action = dragonfly.Mimic("switch", "to", "Aenea", "client")
-    #action = dragonfly.Playback([(["switch", "to", "Aenea", "client"], 0.0)])
-    #action = dragonfly.FocusWindow(title="Aenea client")
-    #action.execute()
-    #time.sleep(0.3)
-
-    # Move the keyboard focus in Windows to a text box, so I can't accidentally type messages in Windows while I'm looking at Linux!
-    # The Windows keyboard focus can be controlled even while I'm in Linux, so we do it after the importance of have already happened above.
-    #action = dragonfly.Mimic("switch", "to", "notepad")
-    #action = dragonfly.FocusWindow(title="Notepad")
-    #action = dragonfly.Mimic("control", "one")
-    #action = dragonfly.Mimic("control", "foxy")  # Open the Firefox search bar, so I can still read chats but not type into them
-    #action = dragonfly.Mimic("control", "lazy")  # Focus on the location bar
-    #action.execute()
-    #time.sleep(0.3)
-
-
-# Switching OSes, when Windows is in a VM on top of a Linux host:
-def changeToWindowsVM():
-    print "Changing to Windows VM from Linux!"
-
-    # Run our aenea plugin script that moves the Windows VM to fullscreen in Linux.
-    aenea.communications.server.change_OS("Windows")
-    time.sleep(0.3)
-
-    # Make sure the keyboard input doesn't go to the Linux aenea server!
-    #action = dragonfly.Mimic("start", "dragonpad")
-    #action = dragonfly.BringApp("")
-    #action = dragonfly.Playback([(["alt", "escape"], 0.0)])
-    #action = dragonfly.Key("alt") + dragonfly.Key("escape")
-    #action = dragonfly.FocusWindow(title="Firefox")
-    # Change the Windows browser to the Slack tab
-    # The Windows keyboard focus can be controlled even while I'm in Linux, so we do it after the importance of have already happened above.
-    #action = dragonfly.Mimic("control", "four")
-    #action = dragonfly.Mimic("F6")
-    #action.execute()
-    #time.sleep(0.6)
-
-    print "Switching Dragon to Normal mode."
-    action = dragonfly.Mimic("switch", "to", "normal", "mode")
-    #action = dragonfly.Playback([(["switch", "to", "normal", "mode"], 0.0)])
-    action.execute()
-
-    # Show on the USB LED
-    global GRAMMAR_MODE
-    GRAMMAR_MODE = "Normal"
-    updateLED("on")
-    time.sleep(0.3)
-
-    # Make sure the DragonPad menu bar isn't selected
-    #action = dragonfly.Mimic("escape")
-    #action.execute()
-    #time.sleep(0.3)
-
-
-# Switching OSes, when Windows is another PC:
-def changeToWindowsNative():
-    print "Changing to native Windows PC from other Linux PC!"
-    action = dragonfly.Mimic("gravy")
-    action.execute()
-    time.sleep(0.2)
-    action = dragonfly.Mimic("switch", "to", "normal", "mode")
-    action.execute()
-    time.sleep(0.2)
-    aenea.config.disable_proxy()
-    time.sleep(0.3)
-
-# Switching OSes, when Windows is another PC:
-def changeToLinuxNative():
-    print "Changing to Linux PC from other native Windows PC!"
-    action = dragonfly.Mimic("switch", "to", "command", "mode")
-    action.execute()
-    time.sleep(0.2)
-    aenea.config.enable_proxy()
-    time.sleep(0.3)
-    action = dragonfly.Mimic("porridge")
-    action.execute()
-
-
-def changeToWindows():
-    pid = aenea.communications.server.updateRecognition("change to windows")
-    #changeToWindowsNative()
-    changeToWindowsVM()
-
-def changeToLinux():
-    pid = aenea.communications.server.updateRecognition("change to linux")
-    #changeToLinuxNative()
-    changeToLinuxVM()
-
-
 def showWindowList():
     print "Showing the Linux window list."
-    pid = aenea.communications.server.updateRecognition("window list")
+    logRecognition("window list")
 
     #"show window list":      Key("win:down/999, tab") + Key("win:up"),
     #"show window list":      Key("w-l") + Key("tab") + Key("down"),
@@ -444,7 +302,7 @@ def showHistory():
 
 def showShelfList():
     print "Showing the Linux shelf list."
-    pid = aenea.communications.server.updateRecognition("shelf list")
+    logRecognition("shelf list")
 
     # Run our aenea plugin script that shows the Linux clipboard shelf list.
     # Value -1 means show the graphical list.
@@ -452,7 +310,7 @@ def showShelfList():
 
 def shelfNumber(val):
     print "Running shelf number", val
-    pid = aenea.communications.server.updateRecognition("shelf " + val)
+    logRecognition("shelf " + val)
 
     # Run our aenea plugin script that pastes the shelf item
     aenea.communications.server.shelfCommand(val)

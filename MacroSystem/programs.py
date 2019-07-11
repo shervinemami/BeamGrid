@@ -4,6 +4,10 @@ import time
 from aenea import *
 import dragonfly
 
+from systemutils import changeToLinux
+from systemutils import changeToWindows
+
+
 gitcommand_array = [
     'add',
     'branch',
@@ -30,14 +34,16 @@ for command in gitcommand_array:
 
 
 # Use Linux AutoKey to switch to these programs when needed.
-# Since we might be jumping from the Windows VM directly to the program, make sure we also change Dragon to command mode.
+# Since we might be jumping from the Windows VM directly to the program, make sure we also change to Linux OS and Dragon command mode.
 def changeWindow(command):
     print "Called changeWindow(" + command + ")"
     action = Key("ctrl:down/3, win:down/3, alt:down/3, " + command) + Key("ctrl:up, win:up, alt:up")
     action.execute()
-    time.sleep(0.2)
-    action = dragonfly.Mimic("switch", "to", "command", "mode")
-    action.execute()
+    time.sleep(0.1)
+    # Change to Linux, but don't add an extra update entry since we're already showing one for the application name.
+    changeToLinux(showUpdate = False)
+    #action = dragonfly.Mimic("switch", "to", "command", "mode")
+    #action.execute()
 
 def changeToFirefox():
     pid = aenea.communications.server.updateRecognition("<Change to Firefox>")

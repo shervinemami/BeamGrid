@@ -1,8 +1,0 @@
-[Core]
-Name = ShowHistory plugin
-Module = showHistory
-
-[Documentation]
-Author = Shervin Emami
-Version = 0.1
-Description = Plugin that shows the Dragon recognition history

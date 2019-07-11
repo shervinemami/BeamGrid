@@ -1,8 +1,0 @@
-[Core]
-Name = UpdateRecognition plugin
-Module = updateRecognition
-
-[Documentation]
-Author = Shervin Emami
-Version = 0.1
-Description = Plugin that shows all speech recognition updates from Dragon
