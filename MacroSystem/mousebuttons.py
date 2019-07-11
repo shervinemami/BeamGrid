@@ -63,6 +63,8 @@ def possibleMouseAction(words):
     action = -1
     index = -1
     word = ""
+    repetitions = 1
+    
     # Check the last word for an action
     try:
         index = len(words)-1
@@ -70,6 +72,7 @@ def possibleMouseAction(words):
         action = mouseActions[word]
     except:
         pass
+    
     # Check the 2nd last word for an action
     try:
         index = len(words)-2
@@ -79,7 +82,6 @@ def possibleMouseAction(words):
         pass
 
     # Find the repetition count
-    repetitions = 1
     try:
         # Grab all words to the right of the mouse action word
         repetition_string = words[index+1:][0]
@@ -87,6 +89,12 @@ def possibleMouseAction(words):
     except:
         pass
 
+    # For the special case of moving the mouse wheel,
+    # set the repetition to be a large number, so the user doesn't have to keep repeating it so many times.
+    # Asking for a repetition of 0 gets mapped to a scroll of 1.
+    if action == 4 or action == 5:      # Mouse wheel up & down button codes are 4 and 5.
+        repetitions = repetitions * 3 + 1     # Set the amount to scroll
+            
     #print "Calling showMouseGrid(-1) on the server to hide the MouseGrid"
     ## Run our aenea plugin script that shows the mouse grid fullscreen in Linux.
     #aenea.communications.server.showMouseGrid(-1)

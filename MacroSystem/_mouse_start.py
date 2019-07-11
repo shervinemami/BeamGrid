@@ -8,6 +8,7 @@ from aenea import Grammar, MappingRule, CompoundRule, Text, Key, Mouse, Function
 #import json
 
 import xmlrpclib
+import time
 
 MOUSE_SERVER_ADDRESS =           'http://192.168.56.1:8000'
 INVISIBLEWINDOW_SERVER_ADDRESS = 'http://192.168.56.1:8001'
@@ -51,11 +52,20 @@ class CenterMouseRule(CompoundRule):
             return
         
         # Possibly press a mouse button action
-        button_int = int(mouseAction)
-        if button_int >= 0:
-            print "Calling clickMouseGrid(%d) on the server" % (button_int)
+        action = int(mouseAction)
+        if action >= 0:
+            repetitions = 1
+            # For the special case of moving the mouse wheel,
+            # set the repetition to be a large number, so the user doesn't have to keep repeating it so many times.
+            # Asking for a repetition of 0 gets mapped to a scroll of 1.
+            if action == 4 or action == 5:      # Mouse wheel up & down button codes are 4 and 5.
+                repetitions = repetitions * 3 + 1     # Set the amount to scroll
+
+            print "Calling clickMouseGrid(%d) on the server" % (action)
             # Run our aenea plugin script that moves and clicks the mouse in Linux.
-            pid = aenea.communications.server.clickMouseGrid(button_int)
+            for i in range(repetitions):
+                pid = aenea.communications.server.clickMouseGrid(action)
+                time.sleep(0.01)
 
 
 class NudgeMouseRule(CompoundRule):
